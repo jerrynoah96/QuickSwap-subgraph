@@ -107,19 +107,25 @@ export function fetchTokenName(tokenAddress: Address): string {
 
 export function fetchTokenTotalSupply(tokenAddress: Address): BigInt {
   let contract = ERC20.bind(tokenAddress)
-  let totalSupplyValue = null
   let totalSupplyResult = contract.try_totalSupply()
+  let totalSupplyValue = BigInt.fromI32(0)
+  
   if (!totalSupplyResult.reverted) {
-    totalSupplyValue = totalSupplyResult as i32
+    
+    totalSupplyValue = totalSupplyResult.value;
   }
-  return BigInt.fromI32(totalSupplyValue as i32)
+  else{
+  log.warning("Call reverted", [])
+  }
+  return totalSupplyValue
+  
 }
 
 export function fetchTokenDecimals(tokenAddress: Address): BigInt {
   // hardcode overrides
   let contract = ERC20.bind(tokenAddress)
   // try types uint8 for decimals
-  let decimalValue = null
+  let decimalValue = 0;
   let decimalResult = contract.try_decimals()
   if (!decimalResult.reverted) {
     decimalValue = decimalResult.value
@@ -134,7 +140,7 @@ export function createLiquidityPosition(exchange: Address, user: Address): Liqui
     .concat(user.toHexString())
   let liquidityTokenBalance = LiquidityPosition.load(id)
   if (liquidityTokenBalance === null) {
-    let pair = Pair.load(exchange.toHexString())
+    let pair = Pair.load(exchange.toHexString())!
     pair.liquidityProviderCount = pair.liquidityProviderCount.plus(ONE_BI)
     liquidityTokenBalance = new LiquidityPosition(id)
     liquidityTokenBalance.liquidityTokenBalance = ZERO_BD
@@ -158,10 +164,10 @@ export function createUser(address: Address): void {
 
 export function createLiquiditySnapshot(position: LiquidityPosition, event: ethereum.Event): void {
   let timestamp = event.block.timestamp.toI32()
-  let bundle = Bundle.load('1')
-  let pair = Pair.load(position.pair)
-  let token0 = Token.load(pair.token0)
-  let token1 = Token.load(pair.token1)
+  let bundle = Bundle.load('1')!
+  let pair = Pair.load(position.pair)!
+  let token0 = Token.load(pair.token0)!
+  let token1 = Token.load(pair.token1)!
 
   // create new snapshot
   let snapshot = new LiquidityPositionSnapshot(position.id.concat(timestamp.toString()))
@@ -169,8 +175,8 @@ export function createLiquiditySnapshot(position: LiquidityPosition, event: ethe
   snapshot.block = event.block.number.toI32()
   snapshot.user = position.user
   snapshot.pair = position.pair
-  snapshot.token0PriceUSD = token0.derivedETH.times(bundle.ethPrice)
-  snapshot.token1PriceUSD = token1.derivedETH.times(bundle.ethPrice)
+  snapshot.token0PriceUSD = (token0.derivedETH)!.times(bundle.ethPrice)
+  snapshot.token1PriceUSD = (token1.derivedETH)!.times(bundle.ethPrice)
   snapshot.reserve0 = pair.reserve0
   snapshot.reserve1 = pair.reserve1
   snapshot.reserveUSD = pair.reserveUSD
